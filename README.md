@@ -1,2 +1,5 @@
-# NLP-Course-Notes-Chapter-4
-Personal notes from chapter 4 of NLP course run by Edinburgh University.
+# NLP-Course-Notes
+Personal notes from NLP course run by Edinburgh University. See original course material ((https://github.com/DDI-Talent/short-NLP-1-HSC-notes)[https://github.com/DDI-Talent/short-NLP-1-HSC-notes])
+
+### Chapter 4
+Template script for pre-processing text data plus basic visualisations and tf-idf calculation.
