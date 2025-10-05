@@ -7,13 +7,14 @@ data_full <- read_csv('./data/CORONA_TWEETS.csv')
 
 data <- data_full |>
   select(doc_id, text) |>
-  filter(doc_id < 10)
+  filter(doc_id < 50)
 
 #################### Pre-processing ############################################
 
 # count characters, words, sentences, lexical diversity in each doc
 data <- data |>
-  mutate(lower_text = str_to_lower(text),
+  mutate(text = str_squish(text), # removes leading/trailing whitespace and single whitespace all internal
+         lower_text = str_to_lower(text),
          nchar = nchar(text),
          word_count = str_count(text, "\\S+"), # regex is for non-whitespace substrings
          eos_count = str_count(text, "[.!?][^.!?]"), # counts sentence ends (although will also pick up abbrevs)
@@ -144,3 +145,66 @@ ggraph(graph_words2, layout = "fr") +
   geom_node_point(size = 2,color = "lightblue") + #makes the geom slightly larger
   geom_node_text(aes(label = name), #adds text labels for the nodes
                  repel = TRUE)
+
+
+############ Stemming and Lemmatisation ########################################
+library(tidyverse)
+library(textstem)
+
+data <- data |>
+  mutate(stems = stem_strings(nostop),
+         lemmas = lemmatize_strings(nostop))
+
+# to stem a vector of individual words
+stemmed2 <- tokenised_words |>
+  anti_join(stop_words) |>
+  mutate(stem = stem_words(word))
+
+# to lemmatise a vector of individual words
+lemma2 <- tokenised_words |>
+  anti_join(stop_words) |>
+  mutate(lemma = lemmatize_words(word))
+
+########### POS Tagging ########################################################
+library(udpipe)
+
+model_eng_ewt   <- udpipe_download_model(language = "english-ewt")
+model_eng_ewt_path <- model_eng_ewt$file_model
+model_eng_ewt_loaded <- udpipe_load_model(file = model_eng_ewt_path)
+
+# Create tibble that has every word and punc mark annotated - also shows, sentences, paragraphs, lemmas, words etc
+text_annotated <- udpipe_annotate(model_eng_ewt_loaded, x = data$text) |>
+  as_tibble() |>
+  mutate(lower_token = str_to_lower(token))
+
+# Frequency of different parts of speech - xpos are lang specific tags
+xpos_freq <- txt_freq(text_annotated$xpos) |>
+  rename(xpos_tag = key)
+
+# Frequency of different parts of speech - upos are universal tags
+upos_freq <- txt_freq(text_annotated$upos) |>
+  rename(upos_tag = key)
+
+# Most occurring adjectives
+adj_chart <- text_annotated |>
+  filter(upos == "ADJ") |>
+  count(lower_token, sort = T) |>
+  filter(n > 1) |>
+  ggplot(aes(x = reorder(lower_token, n), y = n, fill = n)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Adjective", y = "Frequency") +
+  coord_flip() +
+  scale_fill_gradient(trans = "reverse")
+
+adj_chart
+
+# All types chart
+pos_tags_chart <- text_annotated |>
+  ggplot(aes(x = fct_rev(fct_infreq(upos)))) +
+  geom_bar(aes(fill = ..count..)) +
+  coord_flip() +
+  scale_fill_gradient(trans = "reverse") +
+  labs(x = "POS", y = "Frequency")
+
+pos_tags_chart
+
